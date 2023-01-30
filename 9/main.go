@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -15,7 +16,7 @@ type processor struct {
 }
 
 //Занятые процессоры
-var busyProcessors []processor
+var busyProcessors []*processor
 
 //Рабочие процессоры
 var processors []*processor
@@ -23,7 +24,29 @@ var processors []*processor
 //Ближайшее время освобождения процессора
 var timeFreeProcessor uint64
 
+//Есть ли свободные процессоры
 var freeProcessor bool = true
+
+//Индекс следующего свободного процессора
+var freeIndexProcessor uint64
+
+func appendToBusyProcessors(processor *processor) {
+
+}
+
+func freeInBusyProcessors(timeIn, duration uint64) (uint64, error) {
+	if len(busyProcessors) == 0 {
+		return 0, errors.New("нет элементов")
+	}
+	firstElement := busyProcessors[0]
+	if firstElement.FreeTime > timeIn {
+		return 0, errors.New("нет свободных процессоров")
+	}
+	busyProcessors = busyProcessors[1:]
+	firstElement.FreeTime = timeIn + duration
+	appendToBusyProcessors(firstElement)
+	return firstElement.Energy * duration, nil
+}
 
 func generalProcessorsTime(timeIn, duration uint64) uint64 {
 	if timeFreeProcessor > timeIn && freeProcessor == false {
