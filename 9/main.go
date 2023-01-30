@@ -30,7 +30,8 @@ var freeProcessor bool = true
 //Индекс следующего свободного процессора
 var freeIndexProcessor uint64
 
-func appendToBusyProcessors(proc *processor) error {
+//Добавляем в занятые процессоры путем быстрой вставки
+func appendFastToBusyProcessors(proc *processor) error {
 	if len(busyProcessors) == 0 {
 		busyProcessors = append(busyProcessors, proc)
 		return nil
@@ -49,6 +50,47 @@ func appendToBusyProcessors(proc *processor) error {
 	return errors.New("не удалось добавить простым добавлением")
 }
 
+//Вставляем по алгоритму бинарного дерева
+func appendToBusyProcessors(p *processor) {
+	var iStart uint64 = 1
+	var iEnd uint64 = uint64(len(busyProcessors) - 2)
+	var iCenter uint64
+	for {
+		iCenter = (iEnd-iStart)%2 + iStart
+		if iCenter+1 == iEnd {
+			start := busyProcessors[:iCenter]
+			start = append(start, p)
+			busyProcessors = append(start, busyProcessors[iCenter:]...)
+			break
+		}
+		center := busyProcessors[iCenter]
+		if center.FreeTime > p.FreeTime {
+			iStart = iCenter
+			continue
+		}
+		if center.FreeTime < p.FreeTime {
+			iEnd = iCenter
+			continue
+		}
+		if center.FreeTime == p.FreeTime {
+			if center.Energy > p.Energy {
+				iEnd = iCenter
+				continue
+			}
+			if center.Energy < p.Energy {
+				iStart = iCenter
+				continue
+			}
+			if center.Energy == p.Energy {
+				start := busyProcessors[:iCenter]
+				start = append(start, p)
+				busyProcessors = append(start, busyProcessors[iCenter:]...)
+				break
+			}
+		}
+	}
+}
+
 func freeInBusyProcessors(timeIn, duration uint64) (uint64, error) {
 	if len(busyProcessors) == 0 {
 		return 0, errors.New("нет элементов")
@@ -59,7 +101,10 @@ func freeInBusyProcessors(timeIn, duration uint64) (uint64, error) {
 	}
 	busyProcessors = busyProcessors[1:]
 	firstElement.FreeTime = timeIn + duration
-	appendToBusyProcessors(firstElement)
+	err := appendFastToBusyProcessors(firstElement)
+	if err != nil {
+		appendToBusyProcessors(firstElement)
+	}
 	return firstElement.Energy * duration, nil
 }
 
