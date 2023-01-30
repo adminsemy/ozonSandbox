@@ -30,8 +30,23 @@ var freeProcessor bool = true
 //Индекс следующего свободного процессора
 var freeIndexProcessor uint64
 
-func appendToBusyProcessors(processor *processor) {
-
+func appendToBusyProcessors(proc *processor) error {
+	if len(busyProcessors) == 0 {
+		busyProcessors = append(busyProcessors, proc)
+		return nil
+	}
+	lastIndex := len(busyProcessors) - 1
+	lastElement := busyProcessors[lastIndex]
+	if lastElement.FreeTime < proc.FreeTime {
+		busyProcessors = append(busyProcessors, proc)
+		return nil
+	}
+	firstElement := busyProcessors[0]
+	if firstElement.FreeTime > proc.FreeTime {
+		busyProcessors = append([]*processor{proc}, busyProcessors...)
+		return nil
+	}
+	return errors.New("не удалось добавить простым добавлением")
 }
 
 func freeInBusyProcessors(timeIn, duration uint64) (uint64, error) {
