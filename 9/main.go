@@ -16,22 +16,23 @@ type processor struct {
 }
 
 //Занятые процессоры
-var busyProcessors []*processor
+var busyProcessors []processor
 
 //Рабочие процессоры
 var processors []*processor
 
-//Ближайшее время освобождения процессора
-var timeFreeProcessor uint64
-
-//Есть ли свободные процессоры
-var freeProcessor bool = true
-
-//Индекс следующего свободного процессора
-var freeIndexProcessor uint64
+//Добавляем процессор в занятые
+func appendToBusyProcessors(p processor) {
+	err := appendFastToBusyProcessors(p)
+	b := busyProcessors
+	fmt.Println(b)
+	if err != nil {
+		appendBinaryToBusyProcessors(p)
+	}
+}
 
 //Добавляем в занятые процессоры путем быстрой вставки
-func appendFastToBusyProcessors(proc *processor) error {
+func appendFastToBusyProcessors(proc processor) error {
 	if len(busyProcessors) == 0 {
 		busyProcessors = append(busyProcessors, proc)
 		return nil
@@ -44,31 +45,33 @@ func appendFastToBusyProcessors(proc *processor) error {
 	}
 	firstElement := busyProcessors[0]
 	if firstElement.FreeTime > proc.FreeTime {
-		busyProcessors = append([]*processor{proc}, busyProcessors...)
+		busyProcessors = append([]processor{proc}, busyProcessors...)
 		return nil
 	}
 	return errors.New("не удалось добавить простым добавлением")
 }
 
 //Вставляем по алгоритму бинарного дерева
-func appendToBusyProcessors(p *processor) {
-	var iStart uint64 = 1
-	var iEnd uint64 = uint64(len(busyProcessors) - 2)
-	var iCenter uint64
+func appendBinaryToBusyProcessors(p processor) {
+	var iStart = 0
+	var iEnd = (len(busyProcessors) - 1)
+	var iCenter int
+	temp := busyProcessors
 	for {
-		iCenter = (iEnd-iStart)%2 + iStart
+		iCenter = (iEnd-iStart)/2 + iStart
 		if iCenter+1 == iEnd {
-			start := busyProcessors[:iCenter]
-			start = append(start, p)
-			busyProcessors = append(start, busyProcessors[iCenter:]...)
+			busyProcessors = append(busyProcessors[:iCenter+1], busyProcessors[iCenter:]...)
+			busyProcessors[iCenter+1] = p
+			b := busyProcessors
+			fmt.Println(b, temp)
 			break
 		}
 		center := busyProcessors[iCenter]
-		if center.FreeTime > p.FreeTime {
+		if center.FreeTime < p.FreeTime {
 			iStart = iCenter
 			continue
 		}
-		if center.FreeTime < p.FreeTime {
+		if center.FreeTime > p.FreeTime {
 			iEnd = iCenter
 			continue
 		}
@@ -82,9 +85,8 @@ func appendToBusyProcessors(p *processor) {
 				continue
 			}
 			if center.Energy == p.Energy {
-				start := busyProcessors[:iCenter]
-				start = append(start, p)
-				busyProcessors = append(start, busyProcessors[iCenter:]...)
+				busyProcessors = append(busyProcessors[:iCenter+1], busyProcessors[iCenter:]...)
+				busyProcessors[iCenter] = p
 				break
 			}
 		}
@@ -101,34 +103,34 @@ func freeInBusyProcessors(timeIn, duration uint64) (uint64, error) {
 	}
 	busyProcessors = busyProcessors[1:]
 	firstElement.FreeTime = timeIn + duration
-	err := appendFastToBusyProcessors(firstElement)
-	if err != nil {
-		appendToBusyProcessors(firstElement)
-	}
+	appendToBusyProcessors(firstElement)
 	return firstElement.Energy * duration, nil
 }
 
 func generalProcessorsTime(timeIn, duration uint64) uint64 {
-	if timeFreeProcessor > timeIn && freeProcessor == false {
+	res, err := freeInBusyProcessors(timeIn, duration)
+	if err == nil {
+		return res
+	}
+	if len(processors) == 0 {
 		return 0
 	}
-	for _, p := range processors {
-		if p.FreeTime <= timeIn {
-			freeProcessor = true
-			p.FreeTime = duration + timeIn
-			return p.Energy * duration
-		}
-		if timeFreeProcessor > p.FreeTime || timeFreeProcessor == 0 {
-			timeFreeProcessor = p.FreeTime
-		}
-	}
-	freeProcessor = false
-	return 0
+	proc := processors[0]
+	proc.FreeTime = duration + timeIn
+	appendToBusyProcessors(*proc)
+	processors = processors[1:]
+	return proc.Energy * duration
 }
 
 //Сканирование данных из консоли
 func scanNumbers() uint64 {
-	input := bufio.NewReader(os.Stdin)
+	testFile, err := os.Open("./tests/06")
+	if err != nil {
+		fmt.Println("Not found file", err)
+		return 0
+	}
+	defer testFile.Close()
+	input := bufio.NewReader(testFile)
 	var countProcessors int
 	var tasks int
 	var result uint64
