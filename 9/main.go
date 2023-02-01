@@ -24,8 +24,6 @@ var processors []*processor
 //Добавляем процессор в занятые
 func appendToBusyProcessors(p processor) {
 	err := appendFastToBusyProcessors(p)
-	b := busyProcessors
-	fmt.Println(b)
 	if err != nil {
 		appendBinaryToBusyProcessors(p)
 	}
@@ -56,16 +54,13 @@ func appendBinaryToBusyProcessors(p processor) {
 	var iStart = 0
 	var iEnd = (len(busyProcessors) - 1)
 	var iCenter int
-	temp := busyProcessors
 	for {
-		iCenter = (iEnd-iStart)/2 + iStart
-		if iCenter+1 == iEnd {
-			busyProcessors = append(busyProcessors[:iCenter+1], busyProcessors[iCenter:]...)
-			busyProcessors[iCenter+1] = p
-			b := busyProcessors
-			fmt.Println(b, temp)
+		if iStart+1 == iEnd {
+			busyProcessors = append(busyProcessors[:iEnd], busyProcessors[iStart:]...)
+			busyProcessors[iEnd] = p
 			break
 		}
+		iCenter = (iEnd-iStart)/2 + iStart
 		center := busyProcessors[iCenter]
 		if center.FreeTime < p.FreeTime {
 			iStart = iCenter
@@ -85,8 +80,8 @@ func appendBinaryToBusyProcessors(p processor) {
 				continue
 			}
 			if center.Energy == p.Energy {
-				busyProcessors = append(busyProcessors[:iCenter+1], busyProcessors[iCenter:]...)
-				busyProcessors[iCenter] = p
+				busyProcessors = append(busyProcessors[:iEnd], busyProcessors[iStart:]...)
+				busyProcessors[iEnd] = p
 				break
 			}
 		}
@@ -124,7 +119,7 @@ func generalProcessorsTime(timeIn, duration uint64) uint64 {
 
 //Сканирование данных из консоли
 func scanNumbers() uint64 {
-	testFile, err := os.Open("./tests/06")
+	testFile, err := os.Open("./tests/11")
 	if err != nil {
 		fmt.Println("Not found file", err)
 		return 0
