@@ -16,13 +16,13 @@ type processor struct {
 }
 
 //Занятые процессоры
-var busyProcessors []processor
+var busyProcessors []*processor
 
 //Рабочие процессоры
 var processors []*processor
 
 //Добавляем процессор в занятые
-func appendToBusyProcessors(p processor) {
+func appendToBusyProcessors(p *processor) {
 	err := appendFastToBusyProcessors(p)
 	if err != nil {
 		appendBinaryToBusyProcessors(p)
@@ -30,7 +30,7 @@ func appendToBusyProcessors(p processor) {
 }
 
 //Добавляем в занятые процессоры путем быстрой вставки
-func appendFastToBusyProcessors(proc processor) error {
+func appendFastToBusyProcessors(proc *processor) error {
 	if len(busyProcessors) == 0 {
 		busyProcessors = append(busyProcessors, proc)
 		return nil
@@ -43,14 +43,14 @@ func appendFastToBusyProcessors(proc processor) error {
 	}
 	firstElement := busyProcessors[0]
 	if firstElement.FreeTime > proc.FreeTime {
-		busyProcessors = append([]processor{proc}, busyProcessors...)
+		busyProcessors = append([]*processor{proc}, busyProcessors...)
 		return nil
 	}
 	return errors.New("не удалось добавить простым добавлением")
 }
 
 //Вставляем по алгоритму бинарного дерева
-func appendBinaryToBusyProcessors(p processor) {
+func appendBinaryToBusyProcessors(p *processor) {
 	var iStart = 0
 	var iEnd = (len(busyProcessors) - 1)
 	var iCenter int
@@ -96,7 +96,18 @@ func freeInBusyProcessors(timeIn, duration uint64) (uint64, error) {
 	if firstElement.FreeTime > timeIn {
 		return 0, errors.New("нет свободных процессоров")
 	}
-	busyProcessors = busyProcessors[1:]
+	var index int = 0
+	for i, b := range busyProcessors {
+		if firstElement.Energy > b.Energy {
+			firstElement = b
+			index = i
+		}
+		if len(busyProcessors)-1 == i ||
+			busyProcessors[i+1].FreeTime > timeIn {
+			busyProcessors = append(busyProcessors[:index], busyProcessors[index+1:]...)
+			break
+		}
+	}
 	firstElement.FreeTime = timeIn + duration
 	appendToBusyProcessors(firstElement)
 	return firstElement.Energy * duration, nil
@@ -112,14 +123,14 @@ func generalProcessorsTime(timeIn, duration uint64) uint64 {
 	}
 	proc := processors[0]
 	proc.FreeTime = duration + timeIn
-	appendToBusyProcessors(*proc)
+	appendToBusyProcessors(proc)
 	processors = processors[1:]
 	return proc.Energy * duration
 }
 
 //Сканирование данных из консоли
 func scanNumbers() uint64 {
-	testFile, err := os.Open("./tests/11")
+	testFile, err := os.Open("./tests/06")
 	if err != nil {
 		fmt.Println("Not found file", err)
 		return 0
